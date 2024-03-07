@@ -7,12 +7,22 @@ turn_ratio = 0.9
 THRESHOLD_DIFFERENCE = 50
 following_left_edge = True
 
+# ROMEO : My objective is to clean up the code a little bit and change all the things that for me could explain the malfunctions of the robot.
+# I do not have a way to test my code, I'm just changing things solely based on what I observed in your code which means that there will probably problems with my changes too, so I'm counting on you to verify that my changes are beneficial. 
+# I'll leave comments everywhere I change something with what I changed and why, to help you understand my changes.
+# To find all my changes, you can ctrl+f "ROMEO"
+# (I also deleted every commented debug lines to clean the code, except my explanations obviously)
+
+# General question : Where exactly is the AI in this ? This code seems to only use image analysis algorithms, except if the open_cv method findContours uses AI ? 
+
 def get_line_centers(img, near_band_center_y, band_height, band_width_ratio, vmax, render=False):
     height, width, _ = img.shape
     band_width = int(width * band_width_ratio)
     x1 = (width - band_width) // 2
     x2 = x1 + band_width
 
+    # ROMEO : With the arbitrary values you chose, near_y2 ends up outside of the img array.
+    # If this array is a NumPy array, it won't be a problem, but if it's not, it could prevent the whole near_center calculation.
     near_y1, near_y2 = (near_band_center_y - band_height // 2, near_band_center_y + band_height // 2)
     near_band = img[near_y1:near_y2, x1:x2]
 
@@ -25,6 +35,8 @@ def get_line_centers(img, near_band_center_y, band_height, band_width_ratio, vma
 
     def process_band(band, offset_y):
         _, _, v = cv.split(cv.cvtColor(band, cv.COLOR_BGR2HSV))
+        
+        # ROMEO : What's the point of this ? If every pixel whose value exceeds 75 is converted to 0, isn't there a risk that that would create huge black areas that could offset the contours calculations ? 
         v[v > vmax] = 0
         _, contours, _ = cv.findContours(v, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
         if len(contours) == 0:
@@ -47,10 +59,10 @@ def get_line_centers(img, near_band_center_y, band_height, band_width_ratio, vma
 
 def follow_line(rosa, near_center, base_speed=0.1, gain=0.1, img_width=640):
     # Calculate the deviation from the center
+    
+    # ROMEO : Why not use the same deviation formula as in treasure.py (heading = object.center[0] - 170 // speed = 0.25 if heading > 0 else -0.25) ? 
+    # If there's no particular point, why not choose one and use it in both files for continuity sake ?
     near_dx = ((near_center[0] / img_width) - 0.5) * 2
-
-    print(f"near_dx: {near_dx}")  # Debug
-
 
     ls = base_speed + gain * near_dx
     rs = base_speed - gain * near_dx
@@ -114,9 +126,3 @@ if __name__ == '__main__':
         combined_follow_line(rosa, near_center, reflected)
 
         time.sleep(0.16)
-    #     if img is not None:
-    #         cv.imshow('Line Following', img)
-    #         if cv.waitKey(1) & 0xFF == ord('q'):
-    #             break
-
-    # cv.destroyAllWindows()
